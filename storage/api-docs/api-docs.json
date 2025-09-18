@@ -78,49 +78,6 @@
                 }
             }
         },
-        "/api/auth/google": {
-            "get": {
-                "tags": [
-                    "Authentification"
-                ],
-                "summary": "Obtenir l'URL de redirection vers Google",
-                "operationId": "4c48d43ec84767e2fc77931fbfbc24e3",
-                "responses": {
-                    "200": {
-                        "description": "URL de redirection réussie",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "redirect_url": {
-                                            "type": "string",
-                                            "example": "https://accounts.google.com/o/oauth2/auth?..."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Erreur lors de la génération de l'URL",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Erreur lors de la génération de l'URL de redirection"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "api/logout": {
             "post": {
                 "tags": [
@@ -233,12 +190,71 @@
                     }
                 }
             }
+        },
+        "/api/upload-excel": {
+            "post": {
+                "tags": [
+                    "Excel"
+                ],
+                "summary": "Uploader un fichier Excel et retourner son contenu",
+                "operationId": "407b16168c0a4ad7768ee2d8823df697",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "excel_file": {
+                                        "description": "Fichier Excel à uploader",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Erreur de validation ou fichier vide"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                }
+            }
         }
     },
     "tags": [
         {
             "name": "Authentification",
             "description": "Authentification"
+        },
+        {
+            "name": "Excel",
+            "description": "Excel"
         }
     ]
 }
