@@ -10,14 +10,16 @@ class Student extends Model
     use HasFactory;
 
     protected $fillable = [
-        'cin',
-        'first_name',
-        'last_name',
-        'exam',
-        'exam_date',
-        'qr_hash',
-        'qr_path',
-        'grade',
-    ];
+    'cin',
+    'numero_inscri',
+    'first_name',
+    'last_name',
+    'exam',
+    'exam_date',
+    'qr_hash',
+    'qr_path',
+    'grade',
+];
+
 }
 

@@ -126,7 +126,7 @@ class ExcelController extends Controller
 
                     if (!empty($rowData)) {
                         // Respecter l'ordre : Examen | Date | ID | Nom | Prénom | CIN
-                        [$exam, $examDateRaw, $studentId, $lastName, $firstName, $cin] = $rowData;
+                        [$exam, $examDateRaw, $studentId, $lastName, $firstName, $cin,$numeroInscri ]= $rowData;
 
                         // --- Normaliser la date ---
                         $examDate = null;
@@ -162,28 +162,36 @@ class ExcelController extends Controller
 
                         // --- Insertion / update en DB ---
                         $student = Student::updateOrCreate(
-                            ['cin' => $cin, 'exam' => $exam],
-                            [
-                                'first_name' => $firstName,
-                                'last_name'  => $lastName,
-                                'student_id' => $studentId,
-                                'exam_date'  => $examDate,
-                                'qr_hash'    => $hashed,
-                                'qr_path'    => "storage/" . $fileName,
-                            ]
-                        );
+                        ['cin' => $cin, 'exam' => $exam],
+                        [
+                            'first_name'    => $firstName,
+                            'last_name'     => $lastName,
+                            'student_id'    => $studentId,
+                            'exam_date'     => $examDate,
+                            'qr_hash'       => $hashed,
+                            'qr_path'       => "storage/" . $fileName,
+                            'numero_inscri' => $numeroInscri, // ✅ correct
+                        ]
+                    );
 
-                        $qrcodes[] = [
-                            'id'         => $student->id,
-                            'student_id' => $studentId,
-                            'nom'        => $lastName,
-                            'prenom'     => $firstName,
-                            'cin'        => $cin,
-                            'exam'       => $exam,
-                            'exam_date'  => $examDate,
-                            'hash'       => $hashed,
-                            'qrcode'     => base64_encode($qrCodePng),
-                        ];
+                        // --- Préparer réponse ---
+
+
+
+                      $qrcodes[] = [
+                        'id'           => $student->id,
+                        'student_id'   => $studentId,
+                        'nom'          => $lastName,
+                        'prenom'       => $firstName,
+                        'cin'          => $cin,
+                        'numero_inscri'=> $numeroInscri,
+                        'exam'         => $exam,
+                        'exam_date'    => $examDate,
+                        'hash'         => $hashed,
+                        'qrcode'       => base64_encode($qrCodePng),
+                    ];
+
+
                     }
                 }
 
@@ -207,14 +215,16 @@ class ExcelController extends Controller
         // Valider la requête
         $request->validate([
             'qrcodes' => 'required|array',
-            'qrcodes.*.qrcode' => 'required|string',
-            'qrcodes.*.student_id' => 'required|string',
-            'qrcodes.*.nom' => 'required|string',
-            'qrcodes.*.prenom' => 'required|string',
-            'qrcodes.*.cin' => 'required|string',
-            'qrcodes.*.exam' => 'required|string',
-            'qrcodes.*.exam_date' => 'required|string',
+            'qrcodes.*.qrcode'       => 'required|string',
+            'qrcodes.*.student_id'   => 'required|string',
+            'qrcodes.*.nom'          => 'required|string',
+            'qrcodes.*.prenom'       => 'required|string',
+            'qrcodes.*.cin'          => 'required|string',
+            'qrcodes.*.numero_inscri'=> 'required|string', // ✅            'qrcodes.*.exam'         => 'required|string',
+            'qrcodes.*.exam_date'    => 'required|string',
         ]);
+
+
 
         $qrcodes = $request->input('qrcodes');
 
