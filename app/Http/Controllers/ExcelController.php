@@ -10,6 +10,7 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Student;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use Illuminate\Support\Str;
 
 
 
@@ -41,6 +42,38 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
  *     ),
  *     @OA\Response(response=400, description="Erreur de validation ou fichier vide"),
  *     @OA\Response(response=500, description="Erreur serveur")
+ * )
+ */
+// App/Http/Controllers/ExcelController.php
+
+/**
+ * @OA\Post(
+ * path="/api/upload-notes",
+ * summary="Uploader un fichier Excel de notes et mettre à jour les étudiants",
+ * tags={"Excel"},
+ * @OA\RequestBody(
+ * required=true,
+ * @OA\MediaType(
+ * mediaType="multipart/form-data",
+ * @OA\Schema(
+ * @OA\Property(
+ * property="excel_file",
+ * type="string",
+ * format="binary",
+ * description="Fichier Excel contenant les notes (2 colonnes : numero_inscri, note)"
+ * )
+ * )
+ * )
+ * ),
+ * @OA\Response(
+ * response=200,
+ * description="Mise à jour réussie et liste complète des étudiants retournée",
+ * @OA\JsonContent(
+ * @OA\Property(property="students", type="array", @OA\Items(ref="#/components/schemas/Student"))
+ * )
+ * ),
+ * @OA\Response(response=400, description="Erreur de validation ou fichier vide"),
+ * @OA\Response(response=500, description="Erreur serveur")
  * )
  */
 
@@ -257,5 +290,101 @@ class ExcelController extends Controller
         ], 500);
     }
 }
+
+
+public function uploadNotes(Request $request)
+{
+    try {
+        $request->validate([
+            'excel_file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        $file = $request->file('excel_file');
+        $spreadsheet = IOFactory::load($file->getPathname());
+        $worksheet = $spreadsheet->getActiveSheet();
+
+        $isFirstRow = true;
+        foreach ($worksheet->getRowIterator() as $row) {
+            if ($isFirstRow) {
+                $isFirstRow = false;
+                continue;
+            }
+
+            $rowData = [];
+            foreach ($row->getCellIterator() as $cell) {
+                $rowData[] = $cell->getValue() ?? '';
+            }
+
+            if (count($rowData) >= 2) {
+                $numeroInscri = (string)$rowData[0];
+                $note = (float)$rowData[1];
+
+                // On ne garde que les 4 derniers chiffres du numéro d'inscription
+                $lastFourDigits = substr($numeroInscri, -4);
+
+                // Trouver l'étudiant et mettre à jour sa note
+                // On utilise le "LIKE" pour ne matcher que les 4 derniers chiffres
+                $student = Student::where('numero_inscri', 'LIKE', '%' . $lastFourDigits)
+                                    ->first();
+
+                if ($student) {
+                    $student->note = $note;
+                    $student->save();
+                }
+            }
+        }
+
+        // Après la mise à jour, récupérer la liste complète des étudiants
+        $students = Student::all();
+
+        return response()->json(['students' => $students]);
+    } catch (\Exception $e) {
+        Log::error('Erreur lors du traitement du fichier de notes : ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+        return response()->json(['error' => 'Erreur serveur : ' . $e->getMessage()], 500);
+    }
+}
+
+
+public function generateNotesPDF(Request $request)
+    {
+        try {
+            // Valider les données reçues
+            $validated = $request->validate([
+                'notes' => 'required|array',
+                'notes.*.numero_inscri' => 'required|string',
+                'notes.*.cin' => 'required|string',
+                'notes.*.nom' => 'required|string',
+                'notes.*.prenom' => 'required|string',
+                'notes.*.exam' => 'required|string',
+                'notes.*.exam_date' => 'required|string',
+                'notes.*.note' => 'required|numeric|min:0|max:20',
+            ]);
+
+            $notes = $validated['notes'];
+
+            // Charger la vue Blade pour le PDF
+            $pdf = Pdf::loadView('pdf.notes', [
+                'notes' => $notes,
+                'exam' => $notes[0]['exam'] ?? 'Examen',
+                'exam_date' => $notes[0]['exam_date'] ?? now()->format('Y-m-d'),
+            ]);
+
+            // Définir le format de papier (par exemple, A4)
+            $pdf->setPaper('A4', 'portrait');
+
+            // Retourner le PDF en tant que flux binaire
+            return $pdf->stream('notes_relevee.pdf', [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="notes_relevee.pdf"',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Erreur lors de la génération du PDF : ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
 }

@@ -30,6 +30,8 @@ Route::post('/generate-qrcodes', [ExcelController::class, 'generateQRCodes']);
 Route::post('/generate-pdf', [ExcelController::class, 'generatePDF']);
 
 
-
-
+// routes/api.php
+Route::post('/upload-notes', [ExcelController::class, 'uploadNotes']);
 // Pour afficher les QR codes générés à partir du contenu Excel
+
+Route::post('/generate-notes-pdf', [ExcelController::class, 'generateNotesPdf']);
